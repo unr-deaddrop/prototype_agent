@@ -1,5 +1,6 @@
 # Functional
 celery
+supervisord
 
 # Linting
 black

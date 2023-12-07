@@ -28,3 +28,5 @@ For redis, just install redis normally and `pip install -U celery[redis]`, then 
 - `celery -A tasks worker --loglevel=INFO`
 - (venv) `python3 src/main.py`
 
+
+So to start and daemonize everything, just run `supervisord` in the root; by default, it will look for `supervisord.conf` in the current directory before looking elsewhere (`/etc/supervisord.conf`).
