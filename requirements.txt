@@ -1,5 +1,5 @@
 # Functional
-pycryptodome
+celery
 
 # Linting
 black
