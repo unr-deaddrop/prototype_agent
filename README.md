@@ -5,6 +5,20 @@ To start everything, simply run `make` (or `make all`). This will handle daemoni
 
 In the event you need to kill supervisord, run `make kill`.
 
+## The prototype message format
+Derived from P3, all messages are expected to be valid JSON documents with the following structure:
+```json
+
+{
+	"message_type": "command_request",
+	"initiated_by": "", // one of "server", "agent"
+	"timestamp": 000000000, // machine UTC timestamp from the Unix epoch
+	"details": {
+		"message_b64": "data" //test
+	}
+}
+```
+
 ## Project notes
 [Celery Intro](https://docs.celeryq.dev/en/stable/getting-started/first-steps-with-celery.html#first-steps)
 
