@@ -17,14 +17,14 @@ kill:
 	@echo "supervisorctl returned nonzero error code, likely not running"
     endif
 
-
 # Install redis, then install pip requirements
 # https://redis.io/docs/install/install-redis/install-redis-on-linux/
+# Adding the repo just doesn't work for some reason, but it does seem to be available
+# on the standard package distributors.
 deps:
-	curl -fsSL https://packages.redis.io/gpg | sudo gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg
+#	curl -fsSL https://packages.redis.io/gpg | sudo gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg
 
-	echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/redis.list
-
+#	echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(shell lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/redis.list
 	sudo apt-get update
 	sudo apt-get install redis
 	pip install -r requirements.txt
