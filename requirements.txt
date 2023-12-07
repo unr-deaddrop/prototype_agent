@@ -1,6 +1,6 @@
 # Functional
 celery[redis]
-supervisord
+supervisor
 
 # Linting
 black
