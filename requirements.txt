@@ -8,3 +8,6 @@ mypy
 flake8
 flake8-bugbear
 tox
+
+types-redis 
+celery-types

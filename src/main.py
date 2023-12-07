@@ -20,20 +20,25 @@ logging.basicConfig(
 
 logger = logging.getLogger()
 
+
 def get_stored_tasks(app: celery.Celery) -> list[AsyncResult]:
     """
     Get all stored tasks in a Redis database.
-    
+
     This assumes that the prefix is "celery-task-meta-*"; that is, there
     is no Redis prefix that has been manually set.
     """
     # https://stackoverflow.com/questions/72115457/how-can-i-get-results-failures-for-celery-tasks-from-a-redis-backend-when-i-don
     task_results: list[AsyncResult] = []
-    # This is guaranteed
-    for key in app.backend.client.scan_iter("celery-task-meta-*"):
+
+    # The assumption of celery-task-meta-* is safe for Celery.
+    # Additionally, Backend.client is specific to Redis, so we ignore mypy's linting
+    # error here.
+    for key in app.backend.client.scan_iter("celery-task-meta-*"):  # type: ignore[attr-defined]
         task_id = str(key).split("celery-task-meta-", 1)[1].replace("'", "")
         task_results.append(AsyncResult(task_id, app=app))
     return task_results
+
 
 def main():
     """
@@ -53,21 +58,21 @@ def main():
             time.sleep(1)
             logger.warning("Redis isn't available yet, retrying in a second")
             continue
-        
+
         for r in tasks:
-            # print(r.ready()) # Is it ready? (bool)
-            # print(r.get()) # Get the result
-            # Clean up old tasks (which throws them out of the database, apparently)
-            # r.forget()
             pass
-            
+
+        # for r in tasks:
+        # print(r.ready()) # Is it ready? (bool)
+        # print(r.get()) # Get the result
+        # Clean up old tasks (which throws them out of the database, apparently)
+        # r.forget()
+        # pass
+
         # print(app.backend.client)
         # result = add.delay(4, 4)
         # print(result.get(timeout=1))
 
+
 if __name__ == "__main__":
     main()
-    
-
-
-
