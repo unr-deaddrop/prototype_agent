@@ -1,3 +1,11 @@
+## Development
+To get the dependencies (Redis and pip installables), simply run `make deps` (preferably in the context of a venv).
+
+To start everything, simply run `make` (or `make all`). This will handle daemonization for you.
+
+In the event you need to kill supervisord, run `make kill`.
+
+## Project notes
 [Celery Intro](https://docs.celeryq.dev/en/stable/getting-started/first-steps-with-celery.html#first-steps)
 
 To set up RabbitMQ:
@@ -29,4 +37,4 @@ For redis, just install redis normally and `pip install -U celery[redis]`, then 
 - (venv) `python3 src/main.py`
 
 
-So to start and daemonize everything, just run `supervisord` in the root; by default, it will look for `supervisord.conf` in the current directory before looking elsewhere (`/etc/supervisord.conf`).
+So to start and daemonize everything, just run `supervisord` in the root; by default, it will look for `supervisord.conf` in the current directory before looking elsewhere (`/etc/supervisord.conf`). You'll still need to run the app itself.

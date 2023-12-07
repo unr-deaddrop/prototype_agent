@@ -1,8 +1,10 @@
 """
 The main process of the application.
 """
-
 import logging
+import sys
+import redis
+import time
 
 from celery.result import AsyncResult
 import celery
@@ -44,16 +46,24 @@ def main():
     - There is no main thread and the entire app is built as a gigantic Celery task
     - Celery beat triggers a celery task that writes a global variable or something that the main thread can check
     """
-    for r in get_stored_tasks(app):
-        # print(r.ready()) # Is it ready? (bool)
-        # print(r.get()) # Get the result
-        # Clean up old tasks (which throws them out of the database, apparently)
-        # r.forget()
-        pass
+    while True:
+        try:
+            tasks = get_stored_tasks(app)
+        except redis.exceptions.ConnectionError:
+            time.sleep(1)
+            logger.warning("Redis isn't available yet, retrying in a second")
+            continue
         
-    # print(app.backend.client)
-    # result = add.delay(4, 4)
-    # print(result.get(timeout=1))
+        for r in tasks:
+            # print(r.ready()) # Is it ready? (bool)
+            # print(r.get()) # Get the result
+            # Clean up old tasks (which throws them out of the database, apparently)
+            # r.forget()
+            pass
+            
+        # print(app.backend.client)
+        # result = add.delay(4, 4)
+        # print(result.get(timeout=1))
 
 if __name__ == "__main__":
     main()
