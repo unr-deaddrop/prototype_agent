@@ -1,3 +1,7 @@
+# No databases or Redis dumps
+*.db
+*.rdb
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
