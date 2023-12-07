@@ -1,5 +1,5 @@
 # Functional
-celery
+celery[redis]
 supervisord
 
 # Linting
