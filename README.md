@@ -1,7 +1,7 @@
 ## Development
 To get the dependencies (Redis and pip installables), simply run `make deps`. Because dddb currently doesn't seem to work in virtual environments, do this _outside of a venv_.
 
-To start everything, simply run `make` (or `make all`). This will handle daemonization for you.
+To start everything, simply run `make` (or `make all`). This will handle daemonization for you. If supervisor was recently running, you may have to do this multiple times; there's a 10-second delay hardcoded in the makefile to help automate this, but sending SIGTERM doesn't kill everything needed right away.
 
 In the event you need to kill supervisord, run `make kill`.
 
