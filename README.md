@@ -14,9 +14,10 @@ Derived from P3, all messages are expected to be valid, flat JSON documents with
 	"message_type": "command_request",
 	"initiated_by": "agent", // one of "server", "agent"
 	"timestamp": 000000000, // machine UTC timestamp from the Unix epoch
-	"message_b64": "data", // Arbitrary binary data as base64
-	// Internal agent variables, to be ignored by recipient; not included
-	// in outgoing messages
+	"data": "data", // Arbitrary binary data as base64
+	// Internal agent variables, to be ignored by recipient; may or may not
+	// be included in outgoing messages. Any field besides the above may or
+	// may not be ignored by another agent or the server.
 	"extra":{
 		"encoded_msg_path": "local filepath name",
 		"decoded_msg_path": "local filepath name"		

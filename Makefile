@@ -2,7 +2,7 @@ all: kill run
 
 run:
 	supervisord
-	python3 src/main.py
+	python3 -m src.main
 
 # Kill supervisord if running (which would be independent of the current window)
 # https://stackoverflow.com/questions/7394290/how-to-check-return-value-from-the-shell-directive
@@ -13,6 +13,7 @@ SUPERVISORD_PID := $(shell supervisorctl pid)
 kill:
     ifeq ($(SUPERVISORD_RETVAL),0)
 	kill -s SIGTERM $(SUPERVISORD_PID)
+	@echo "Killed supervisor - this may not be instant"
     else
 	@echo "supervisorctl returned nonzero error code, likely not running"
     endif
