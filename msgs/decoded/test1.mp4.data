@@ -1,7 +1,0 @@
-{
-    "msg_id": "123e4567-e89b-12d3-a456-426614174000",
-    "message_type": "command_request",
-    "initiated_by": "server",
-    "timestamp": 1702103078.145753,
-    "data": "Hello world!!!!!"
-}
