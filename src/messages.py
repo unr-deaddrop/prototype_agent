@@ -205,7 +205,7 @@ class AgentMessage(BaseModel):
         """
         Retrive this message's resulting Redis key.
         """
-        return self.REDIS_KEY_PREFIX + self.msg_id
+        return self.REDIS_KEY_PREFIX + str(self.msg_id)
 
     def insert_to_redis(self, redis_con: redis.Redis) -> str:
         """
