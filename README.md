@@ -1,5 +1,5 @@
 ## Development
-To get the dependencies (Redis and pip installables), simply run `make deps` (preferably in the context of a venv).
+To get the dependencies (Redis and pip installables), simply run `make deps`. Because dddb currently doesn't seem to work in virtual environments, do this _outside of a venv_.
 
 To start everything, simply run `make` (or `make all`). This will handle daemonization for you.
 
