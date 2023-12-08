@@ -6,15 +6,20 @@ To start everything, simply run `make` (or `make all`). This will handle daemoni
 In the event you need to kill supervisord, run `make kill`.
 
 ## The prototype message format
-Derived from P3, all messages are expected to be valid JSON documents with the following structure:
+Derived from P3, all messages are expected to be valid, flat JSON documents with the following structure:
 ```json
 
 {
+	"id": "bd65600d-8669-4903-8a14-af88203add38",
 	"message_type": "command_request",
-	"initiated_by": "", // one of "server", "agent"
+	"initiated_by": "agent", // one of "server", "agent"
 	"timestamp": 000000000, // machine UTC timestamp from the Unix epoch
-	"details": {
-		"message_b64": "data" //test
+	"message_b64": "data", // Arbitrary binary data as base64
+	// Internal agent variables, to be ignored by recipient; not included
+	// in outgoing messages
+	"extra":{
+		"encoded_msg_path": "local filepath name",
+		"decoded_msg_path": "local filepath name"		
 	}
 }
 ```
