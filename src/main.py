@@ -8,9 +8,10 @@ import sys
 import time
 
 from celery.result import AsyncResult
+import celery
 import redis
 
-from .tasks import app, write_msg
+from . import tasks
 from . import cfg
 from . import messages
 from . import util
@@ -27,7 +28,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger()
 
-def get_stored_tasks(redis_con: redis.Redis) -> list[AsyncResult]:
+
+def get_stored_tasks(app: celery.Celery) -> list[AsyncResult]:
     """
     Get all stored tasks in a Redis database.
 
@@ -38,6 +40,8 @@ def get_stored_tasks(redis_con: redis.Redis) -> list[AsyncResult]:
     # https://stackoverflow.com/questions/72115457/how-can-i-get-results-failures-for-celery-tasks-from-a-redis-backend-when-i-don
     task_results: list[AsyncResult] = []
 
+    redis_con = util.get_redis_con(app)
+
     # The assumption of celery-task-meta-* is safe for Celery.
     # Additionally, Backend.client is specific to Redis, so we ignore mypy's linting
     # error here.
@@ -46,29 +50,33 @@ def get_stored_tasks(redis_con: redis.Redis) -> list[AsyncResult]:
         task_results.append(AsyncResult(task_id, app=app))
     return task_results
 
-def get_new_msgs(redis_con: redis.Redis, delete_msgs: bool = False) -> list[messages.AgentMessage]:
+
+def get_new_msgs(
+    redis_con: redis.Redis, delete_msgs: bool = False
+) -> list[messages.AgentMessage]:
     """
     Get and reconstruct all messages remaining in the Redis database.
-    
+
     Set `delete_msgs` to `True` to delete each message on retrieval.
     """
     msgs: list[messages.AgentMessage] = []
-    
-    for key in redis_con.scan_iter(messages.AgentMessage.REDIS_KEY_PREFIX+"*"):
-        data = redis_con.hgetall(key)
-        msg_obj = messages.AgentMessage.model_validate(data)
+
+    for key in redis_con.scan_iter(messages.AgentMessage.REDIS_KEY_PREFIX + "*"):
+        data = redis_con.get(key)
+        msg_obj = messages.AgentMessage.model_validate_json(data)
         msgs.append(msg_obj)
         logger.debug(f"Retrieved redis key {key} to form the message {msg_obj}")
-        
+
         if delete_msgs:
             logger.info(f"Deleted redis key {key}")
             redis_con.delete(key)
-            
+
     return msgs
+
 
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Creates and verifies .lol files.")
-    
+
     # Access this argument as env_path.
     parser.add_argument(
         "--env",
@@ -77,22 +85,23 @@ def get_args() -> argparse.Namespace:
         type=Path,
         help="The configuration variables for the agent.",
         required=False,
-        dest="env_path"
+        dest="env_path",
     )
 
     return parser.parse_args()
 
-def main(cfg_obj: cfg.Config) -> None:
+
+def main(cfg_obj: cfg.Config, app: celery.Celery) -> None:
     """
     Main thread.
-    
+
     Right now, this just checks for new messages placed by Celery into Redis,
-    then 
+    then
     """
     redis_connected: bool = False
-    
+
     while True:
-        try:            
+        try:
             new_msgs = get_new_msgs(util.get_redis_con(app), delete_msgs=True)
             if not redis_connected:
                 logger.info("Successfully connected to Redis")
@@ -101,29 +110,31 @@ def main(cfg_obj: cfg.Config) -> None:
             logger.warning("Couldn't connect to Redis, retrying in a second")
             time.sleep(1)
             continue
-        
+
         if not new_msgs:
             logger.info("No new messages, sleeping for 5s")
             time.sleep(5)
-        
+
         for msg in new_msgs:
             # Do something with the message using the command module for the agent.
             # For now, let's just reverse the message and write a response message
             # for each one
             new_data = msg.data[::-1]
-            
+
             new_msg = messages.AgentMessage(
                 message_type=messages.MessageType.CMD_RESPONSE,
-                intiated_by="agent",
-                data=new_data
+                initiated_by="agent",
+                data=new_data,
             )
-            
+
             logger.debug(f"Writing new message {new_msg}")
+            tasks.write_msg.delay(new_msg, cfg_obj)
+
 
 if __name__ == "__main__":
     args = get_args()
     cfg_obj = cfg.Config.from_env_file(args.env_path)
     # Create any required directory structure
     cfg_obj.create_dirs()
-    
-    main(cfg_obj)
+
+    main(cfg_obj, tasks.app)

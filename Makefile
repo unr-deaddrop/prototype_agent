@@ -13,7 +13,8 @@ SUPERVISORD_PID := $(shell supervisorctl pid)
 kill:
     ifeq ($(SUPERVISORD_RETVAL),0)
 	kill -s SIGTERM $(SUPERVISORD_PID)
-	@echo "Killed supervisor - this may not be instant"
+	@echo "Killed supervisor - waiting a few seconds"
+	@sleep 10
     else
 	@echo "supervisorctl returned nonzero error code, likely not running"
     endif
