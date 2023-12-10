@@ -1,6 +1,8 @@
 # Functional
 celery[redis]
 supervisor
+pydantic==2.5.2
+python-dotenv
 
 # Linting
 black
