@@ -185,7 +185,9 @@ class AgentMessage(BaseModel):
         decoded_out_path = (
             decoded_dir / (Path(str(self.msg_id)).with_suffix(".data"))
         ).resolve()
-        encoded_out_path = (encoded_dir / Path(str(self.msg_id) + suffix)).resolve()
+        encoded_out_path = (
+            encoded_dir / Path(str(self.msg_id)).with_suffix(suffix)
+        ).resolve()
         if decoded_out_path.exists():
             raise RuntimeError(f"A message at {decoded_out_path} already exists!")
 

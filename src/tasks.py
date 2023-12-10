@@ -6,6 +6,8 @@ import subprocess
 from celery import Celery, Task
 from celery.utils.log import get_task_logger
 
+import dddb
+
 from . import cfg
 from . import messages
 from . import util
@@ -40,6 +42,39 @@ def setup_periodic_tasks(sender, **kwargs):
         check_new_msgs.s(cfg_obj.MESSAGE_DIR, cfg_obj.DECODED_DIR),
         name="check for new messages",
     )
+    sender.add_periodic_task(
+        5.0,
+        download_yt_videos.s(cfg_obj.MESSAGE_DIR),
+        name="check for new youtube videos",
+    )
+
+
+@app.task(serializer="pickle")
+def download_yt_videos(encoded_msg_dir: Path, suffix: str = ".mp4") -> None:
+    """
+    Download all videos not previously seen.
+
+    Whether or not a video is downloaded is determined by whether or not {video_id}.mp4
+    exists in `encoded_msg_dir`. If it does, the video is assumed to have already
+    been downloaded.
+
+    This does not do anything on its own; it is assumed that the check_new_msgs()
+    task will act accordingly.
+    """
+    # no clue how this will work lol
+    # iterator over all available videos, or at least one
+    for _ in range(69, 420):
+        yt_video_id: str = "???"
+        target_path = (
+            encoded_msg_dir / Path(str(yt_video_id)).with_suffix(suffix)
+        ).resolve()
+        if target_path.exists():
+            logger.debug(f"Ignoring {yt_video_id=}, as it appears to already exist")
+            continue
+
+        # download and write to target path
+        # dddb.remote.youtube.download(str(target_path)
+        # logger.info("Downloaded {yt_video_id=} to {target_path}")
 
 
 # TODO: pickle is unsafe but (on paper) we just want this to work
