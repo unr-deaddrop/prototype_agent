@@ -1,5 +1,9 @@
+from datetime import datetime
 from pathlib import Path
-from celery import Celery
+import re
+import subprocess
+
+from celery import Celery, Task
 from celery.utils.log import get_task_logger
 
 from . import cfg
@@ -14,6 +18,7 @@ logger = get_task_logger(__name__)
 DEFAULT_ENV_PATH = Path("./common.env")
 REDIS_FILES_SEEN_KEY = "_agent_meta-msgs"
 REDIS_INTERNAL_MSG_PREFIX = "agent-msg-parsed-"
+REDIS_COMPLETED_CMDS_KEY = "_agent_meta-cmds"
 app = Celery(
     "tasks", backend="redis://localhost:6379/0", broker="redis://localhost:6379/0"
 )
@@ -123,14 +128,56 @@ def write_msg(msg: messages.AgentMessage, cfg_obj: cfg.Config) -> None:
     # and upload accordingly...
 
 
-@app.task
-def execute_command(msg: messages.AgentMessage) -> messages.AgentMessage:
+@app.task(bind=True, serializer="pickle")
+def execute_command(self: Task, cmd_str: str) -> dict:
     """
     Execute a command.
 
     The net result should be a constructed AgentMessage of command_response type,
     as built by the relevant command handler chosen by the command dispatch
     (which might be this task?).
+
+    To prevent the agent from stalling while commands are executed, this is fully
+    asynchronous. The results of tasks are simply logged out at the INFO level.
+
+    The direct result is a dictionary. The task ID of this request is added to
+    REDIS_COMPLETED_TASKS_KEY, a set of task IDs.
+
+    The format is as follows:
+    {
+        'cmd_str': str
+        'stdout': bytes
+        'stderr': bytes
+        'start_time': float
+        'end_time': float
+    }
     """
-    # TODO: implement
-    raise NotImplementedError
+    r = re.search(r"(?:.*)(?:command:)(.*)", cmd_str)
+    if not r:
+        raise RuntimeError(f"`command` directive absent from {cmd_str}")
+
+    command = r.group(1)
+    logger.info(f"Running {command} as shell command")
+    # very dangerous!!
+    start_time = datetime.utcnow().timestamp()
+    # TODO: timeout is there for now to avoid instantly bricking everything
+    cmd_result = subprocess.run(command, capture_output=True, shell=True, timeout=60)
+    end_time = datetime.utcnow().timestamp()
+
+    redis_con = util.get_redis_con(app)
+    redis_con.sadd(REDIS_COMPLETED_CMDS_KEY, self.request.id)  # type: ignore
+
+    # TODO: this internal message ought to be a pydantic model too lol -
+    # makes returning the command result a lot cleaner.
+    #
+    # wouldn't it just make sense to have a pydantic model called GenericMessage
+    # and then have a bunch of specific message types inherit?
+    result = {
+        "cmd_str": command,
+        "stdout": cmd_result.stdout,
+        "stderr": cmd_result.stderr,
+        "start_time": start_time,
+        "end_time": end_time,
+    }
+
+    return result

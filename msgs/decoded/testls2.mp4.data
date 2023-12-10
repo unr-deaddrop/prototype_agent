@@ -3,5 +3,5 @@
     "message_type": "command_request",
     "initiated_by": "server",
     "timestamp": 1702103078.145753,
-    "data": "command:none"
+    "data": "command:ls -la"
 }
